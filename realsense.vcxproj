@@ -75,6 +75,7 @@
     <Import Project="..\..\..\..\..\..\Program Files (x86)\Intel RealSense SDK 2.0\glfw-imgui.props" />
     <Import Project="..\..\..\..\..\..\lib\glfw-3.3.2.bin.WIN64\lib-vc2019\glfw.props" />
     <Import Project="pcl1.11.1_d.props" />
+    <Import Project="..\..\OpenCV_DNN\OpenCV_DNN\opencv450.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -82,6 +83,7 @@
     <Import Project="..\..\..\..\..\..\Program Files (x86)\Intel RealSense SDK 2.0\glfw-imgui.props" />
     <Import Project="..\..\..\..\..\..\lib\glfw-3.3.2.bin.WIN64\lib-vc2019\glfw.props" />
     <Import Project="pcl1.11.1.props" />
+    <Import Project="..\..\OpenCV_DNN\OpenCV_DNN\opencv450r.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -144,6 +146,7 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -153,13 +156,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="convert_util.hpp" />
     <ClInclude Include="example.hpp" />
+    <ClInclude Include="rabv.hpp" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="realsense.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="convert_util.cpp" />
+    <ClCompile Include="libstest.cpp" />
+    <ClCompile Include="libstest.hpp" />
     <ClCompile Include="rs2test.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
