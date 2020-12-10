@@ -292,6 +292,7 @@ namespace libstest {
             viewer->addPointCloud<pcl::PointXYZ>(cloud_filtered, "coloud");
             viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "coloud");
             viewer->addCoordinateSystem();
+            //viewer->resetCameraViewpoint();
             viewer->spinOnce(10);
 
             if (GetAsyncKeyState(VK_SPACE) & 1) {
@@ -312,6 +313,7 @@ namespace libstest {
                 const int h = frame4cv.as<rs2::video_frame>().get_height();
 
                 Mat image(Size(w, h), CV_8UC3, (void*)frame4cv.get_data(), Mat::AUTO_STEP);
+                cvtColor(image, image, COLOR_BGR2RGB);
 
                 imshow(window_name, image);
             }
@@ -435,6 +437,7 @@ namespace libstest {
 
             // Create OpenCV matrix of size (w,h) from the colorized depth data
             Mat image(Size(w, h), CV_8UC3, (void*)depth.get_data(), Mat::AUTO_STEP);
+            cvtColor(image, image, COLOR_BGR2RGB);
 
             // Update the window with new data
             imshow(window_name, image);
