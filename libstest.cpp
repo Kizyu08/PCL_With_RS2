@@ -250,6 +250,26 @@ namespace libstest {
         rs2::points points;
         rs2::pointcloud pointcloud;
         rs2::colorizer color_map;
+        rs2::align align(RS2_STREAM_COLOR);
+
+        rs2::decimation_filter dec_filter;
+        dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 3);
+        rs2::disparity_transform depth_to_disparity(true);
+        rs2::disparity_transform disparity_to_depth(false);
+
+        rs2::spatial_filter spat_filter;
+        spat_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 2);
+        spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.5);
+        spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20);
+        spat_filter.set_option(RS2_OPTION_HOLES_FILL, 0);
+
+        rs2::temporal_filter temp_filter;
+        temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.4);
+        temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20);
+        temp_filter.set_option(RS2_OPTION_HOLES_FILL, 3);
+
+        rs2::hole_filling_filter hf_filter;
+        hf_filter.set_option(RS2_OPTION_HOLES_FILL, 1);
 
 
         //pcl
@@ -262,9 +282,17 @@ namespace libstest {
         const auto window_name = "Display Image";
         cv::namedWindow(window_name, cv::WINDOW_AUTOSIZE);
 
+
+        //strat
         rs2::pipeline_profile profile = pipeline.start();
+        
         auto intrinsics = profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>().get_intrinsics();
         std::cout << "fx:" << intrinsics.fx << " fy:" << intrinsics.fy << std::endl;
+
+        auto sensor = profile.get_device().first<rs2::depth_sensor>();
+        auto scale = sensor.get_depth_scale();
+        std::cout << "depth scale: " << scale << std::endl;
+        
 
         while (cv::getWindowProperty(window_name, cv::WND_PROP_AUTOSIZE) >= 0)
         {
@@ -272,12 +300,17 @@ namespace libstest {
             auto depths = frames.get_depth_frame();
             auto rgb = frames.get_color_frame();
 
+            //ˆÊ’u‡‚í‚¹
+            auto aligned_frames = align.process(frames);
+            rs2::video_frame aligned_color_frame = aligned_frames.first(RS2_STREAM_COLOR);
+            rs2::depth_frame aligned_depth_frame = aligned_frames.get_depth_frame();
+
             //pcl
             // Clear the view
             viewer->removeAllShapes();
             viewer->removeAllPointClouds();
 
-            points = pointcloud.calculate(depths);
+            points = pointcloud.calculate(aligned_depth_frame);
             auto pcl_points = points_to_pcl(points);
 
 
