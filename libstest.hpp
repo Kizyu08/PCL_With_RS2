@@ -31,7 +31,7 @@ namespace libstest {
 
     void rs2pcl();
 
-    void rs2pcd();
+    void rs2pcd(int = 300, int = 300, int = 600, int = 600);
 
     void rs2pcd_rab();
 

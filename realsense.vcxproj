@@ -156,10 +156,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="common.hpp" />
     <ClInclude Include="convert_util.hpp" />
     <ClInclude Include="example.hpp" />
     <ClInclude Include="rabv.hpp" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="cv_dnn.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="realsense.rc" />
@@ -168,6 +170,7 @@
     <ClCompile Include="convert_util.cpp" />
     <ClCompile Include="libstest.cpp" />
     <ClCompile Include="libstest.hpp" />
+    <ClCompile Include="cv_dnn.cpp" />
     <ClCompile Include="rs2test.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
