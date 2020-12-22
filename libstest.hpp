@@ -18,8 +18,8 @@
 #include <librealsense2/rsutil.h>
 #include <Windows.h>
 #include <opencv2/opencv.hpp>
-#include "rabv.hpp"
 #include "convert_util.hpp"
+#include "rabv.hpp"
 
 namespace libstest {
 
@@ -30,8 +30,6 @@ namespace libstest {
     void viewerPsycho(pcl::visualization::PCLVisualizer&);
 
     void rs2pcl();
-
-    void rs2pcd(int = 300, int = 300, int = 600, int = 600);
 
     void rs2pcd_rab();
 

@@ -1,9 +1,7 @@
 ﻿#include "cv_dnn.hpp"
 
-using namespace cv;
-using namespace dnn;
 
-class cv_dnn {
+//class cv_dnn {
     //std::string keys =
     //    "{ help  h     | | Print help message. }"
     //    "{ @alias      | | An alias name of model to extract preprocessing parameters from models.yml file. }"
@@ -25,13 +23,13 @@ class cv_dnn {
     //    "2: OpenCL fp16 (half-float precision), "
     //    "3: VPU }";
 
-
-    cv_dnn() {
-
+using namespace common;
+namespace libstest {
+    cv_dnn::cv_dnn() {
         // Open file with classes names.
         std::ifstream ifs(file.c_str());
-        if (!ifs.is_open())
-            CV_Error(Error::StsError, "File " + file + " not found");
+        if (!ifs.is_open());
+        //CV_Error(Error::StsError, "File " + file + " not found");
         std::string line;
         while (std::getline(ifs, line))
         {
@@ -39,7 +37,7 @@ class cv_dnn {
         }
 
         // Load a model.
-        net = readNet(modelPath, configPath);
+        net = cv::dnn::readNet(modelPath, configPath);
         net.setPreferableBackend(backend);
         net.setPreferableTarget(target);
         outNames = net.getUnconnectedOutLayersNames();
@@ -52,28 +50,32 @@ class cv_dnn {
 
     }
 
-    void exec(Mat* input, Mat* out)
+    void cv_dnn::exec(cv::Mat& frame, cv::Mat& out, std::vector<cv::Rect>& boxes)
     {
+        if (frame.rows == 0 || frame.cols == 0) {
+            return;
+        }
         //処理
         // Create a 4D blob from a frame.
-        Size inpSize(
+        cv::Size inpSize(
             inpWidth > 0 ? inpWidth : frame.cols,
             inpHeight > 0 ? inpHeight : frame.rows
         );
-        blobFromImage(frame, blob, scale, inpSize, mean, swapRB, false);
+        cv::dnn::blobFromImage(frame, blob, scale, inpSize, mean, swapRB, false);
 
         // Run a model.
         net.setInput(blob);
         if (net.getLayer(0)->outputNameToIndex("im_info") != -1)  // Faster-RCNN or R-FCN
         {
             resize(frame, frame, inpSize);
-            Mat imInfo = (Mat_<float>(1, 3) << inpSize.height, inpSize.width, 1.6f);
+            cv::Mat imInfo = (cv::Mat_<float>(1, 3) << inpSize.height, inpSize.width, 1.6f);
             net.setInput(imInfo, "im_info");
         }
-        std::vector<Mat> outs;
+        std::vector<cv::Mat> outs;
         net.forward(outs, outNames);
 
-        postprocess(frame, outs, net);
+        postprocess(frame, outs, net, boxes);
+
 
         // Put efficiency information.
         /*std::vector<double> layersTimes;
@@ -85,14 +87,13 @@ class cv_dnn {
         //imshow(kWinName, frame);
     }
 
-    void postprocess(Mat& frame, const std::vector<Mat>& outs, Net& net)
+    void cv_dnn::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs, cv::dnn::Net& net, std::vector<cv::Rect>& boxes)
     {
         static std::vector<int> outLayers = net.getUnconnectedOutLayers();
         static std::string outLayerType = net.getLayer(outLayers[0])->type;
 
         std::vector<int> classIds;
         std::vector<float> confidences;
-        std::vector<Rect> boxes;
         if (outLayerType == "DetectionOutput")
         {
             // Network produces output blob with a shape 1x1xNx7 where N is a number of
@@ -113,6 +114,7 @@ class cv_dnn {
                         int bottom = (int)data[i + 6];
                         int width = right - left + 1;
                         int height = bottom - top + 1;
+
                         if (width * height <= 1)
                         {
                             left = (int)(data[i + 3] * frame.cols);
@@ -122,8 +124,9 @@ class cv_dnn {
                             width = right - left + 1;
                             height = bottom - top + 1;
                         }
+
                         classIds.push_back((int)(data[i + 1]) - 1);  // Skip 0th background class id.
-                        boxes.push_back(Rect(left, top, width, height));
+                        boxes.push_back(cv::Rect(left, top, width, height));
                         confidences.push_back(confidence);
                     }
                 }
@@ -139,10 +142,11 @@ class cv_dnn {
                 float* data = (float*)outs[i].data;
                 for (int j = 0; j < outs[i].rows; ++j, data += outs[i].cols)
                 {
-                    Mat scores = outs[i].row(j).colRange(5, outs[i].cols);
-                    Point classIdPoint;
+                    cv::Mat scores = outs[i].row(j).colRange(5, outs[i].cols);
+                    cv::Point classIdPoint;
                     double confidence;
                     minMaxLoc(scores, 0, &confidence, 0, &classIdPoint);
+
                     if (confidence > confThreshold)
                     {
                         int centerX = (int)(data[0] * frame.cols);
@@ -154,30 +158,30 @@ class cv_dnn {
 
                         classIds.push_back(classIdPoint.x);
                         confidences.push_back((float)confidence);
-                        boxes.push_back(Rect(left, top, width, height));
+                        boxes.push_back(cv::Rect(left, top, width, height));
                     }
                 }
             }
         }
-        else
-            CV_Error(Error::StsNotImplemented, "Unknown output layer type: " + outLayerType);
+        //else
+            //CV_Error(Error::StsNotImplemented, "Unknown output layer type: " + outLayerType);
 
         std::vector<int> indices;
-        NMSBoxes(boxes, confidences, confThreshold, nmsThreshold, indices);
+        cv::dnn::NMSBoxes(boxes, confidences, confThreshold, nmsThreshold, indices);
         for (size_t i = 0; i < indices.size(); ++i)
         {
             int idx = indices[i];
-            Rect box = boxes[idx];
+            cv::Rect box = boxes[idx];
             drawPred(classIds[idx], confidences[idx], box.x, box.y,
                 box.x + box.width, box.y + box.height, frame);
         }
     }
 
-    void drawPred(int classId, float conf, int left, int top, int right, int bottom, Mat& frame)
+    void cv_dnn::drawPred(int classId, float conf, int left, int top, int right, int bottom, cv::Mat& frame)
     {
-        rectangle(frame, Point(left, top), Point(right, bottom), Scalar(0, 255, 0));
+        rectangle(frame, cv::Point(left, top), cv::Point(right, bottom), cv::Scalar(0, 255, 0));
 
-        std::string label = format("%.2f", conf);
+        std::string label = cv::format("%.2f", conf);
         if (!classes.empty())
         {
             CV_Assert(classId < (int)classes.size());
@@ -185,30 +189,28 @@ class cv_dnn {
         }
 
         int baseLine;
-        Size labelSize = getTextSize(label, FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
+        cv::Size labelSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
 
-        top = max(top, labelSize.height);
+        top = cv::max(top, labelSize.height);
         rectangle(
             frame,
-            Point(left, top - labelSize.height),
-            Point(left + labelSize.width, top + baseLine),
-            Scalar::all(255),
-            FILLED
+            cv::Point(left, top - labelSize.height),
+            cv::Point(left + labelSize.width, top + baseLine),
+            cv::Scalar::all(255),
+            cv::FILLED
         );
         putText(
             frame,
             label,
-            Point(left, top),
-            FONT_HERSHEY_SIMPLEX,
+            cv::Point(left, top),
+            cv::FONT_HERSHEY_SIMPLEX,
             0.5,
-            Scalar()
+            cv::Scalar()
         );
     }
 
-    void callback(int pos, void*)
+    void cv_dnn::callback(int pos, void*)
     {
         confThreshold = pos * 0.01f;
     }
-
-
-};
+}

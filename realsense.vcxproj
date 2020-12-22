@@ -159,6 +159,7 @@
     <ClInclude Include="common.hpp" />
     <ClInclude Include="convert_util.hpp" />
     <ClInclude Include="example.hpp" />
+    <ClInclude Include="points_position_detector.h" />
     <ClInclude Include="rabv.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="cv_dnn.hpp" />
@@ -167,10 +168,12 @@
     <ResourceCompile Include="realsense.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="common.cpp" />
     <ClCompile Include="convert_util.cpp" />
     <ClCompile Include="libstest.cpp" />
     <ClCompile Include="libstest.hpp" />
     <ClCompile Include="cv_dnn.cpp" />
+    <ClCompile Include="points_position_detector.cpp" />
     <ClCompile Include="rs2test.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -2,7 +2,7 @@
 
 namespace libstest {
     typedef pcl::PointXYZ PointT;
-    using pcl_ptr = pcl::PointCloud<PointT>::Ptr;
+    //using pcl_ptr = pcl::PointCloud<PointT>::Ptr;
     using namespace convertutil;
     //int user_data;
 
@@ -97,308 +97,148 @@ namespace libstest {
 
     void rs2pcl()
     {
-        ////realsense
-        //rs2::pipeline pipeline;
-        //rs2::points points;
-        //rs2::pointcloud pointcloud;
-        //pipeline.start();
-
-        //// All the objects needed
-        //pcl::PCDReader reader;
-        //pcl::PassThrough<PointT> pass;
-        //pcl::VoxelGrid<PointT> voxel_filter;
-        //pcl::NormalEstimation<PointT, pcl::Normal> ne;
-        //pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
-        //pcl::PCDWriter writer;
-        //pcl::ExtractIndices<PointT> extract;
-        //pcl::ExtractIndices<pcl::Normal> extract_normals;
-        //pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>());
-
-        //// Datasets
-        //pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
-        //pcl::PointCloud<PointT>::Ptr cloud_filtered(new pcl::PointCloud<PointT>);
-        //pcl::PointCloud<PointT>::Ptr cloud_voxel_filtered(new pcl::PointCloud<PointT>());
-        //pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
-        //pcl::PointCloud<PointT>::Ptr cloud_filtered2(new pcl::PointCloud<PointT>);
-        //pcl::PointCloud<pcl::Normal>::Ptr cloud_normals2(new pcl::PointCloud<pcl::Normal>);
-        //pcl::ModelCoefficients::Ptr coefficients_plane(new pcl::ModelCoefficients);
-        //pcl::ModelCoefficients::Ptr coefficients_cylinder(new pcl::ModelCoefficients);
-        //pcl::PointIndices::Ptr inliers_plane(new pcl::PointIndices);
-        //pcl::PointIndices::Ptr inliers_cylinder(new pcl::PointIndices);
-
-
-        //pcl::visualization::CloudViewer viewer("Cloud Viewer");
-        ////メインループ
-        //while (!viewer.wasStopped())
-        //{
-        //    auto frames = pipeline.wait_for_frames();
-        //    auto depths = frames.get_depth_frame();
-        //    auto rgb = frames.get_color_frame();
-
-        //    points = pointcloud.calculate(depths);
-        //    auto pcl_points = points_to_pcl(points);
-        //    //viewer.showCloud(pcl_points);
-
-        //    cloud = pcl_points;
-        //    //viewer.showCloud(cloud);
-        //    // Read in the cloud data
-        //    //reader.read("table_scene_mug_stereo_textured.pcd", *cloud);
-        //    std::cerr << "PointCloud has: " << cloud->size() << " data points." << std::endl;
-
-
-        //    // Build a passthrough filter to remove spurious NaNs
-        //    pass.setInputCloud(cloud);
-        //    pass.setFilterFieldName("z");
-        //    pass.setFilterLimits(0, 1.5);
-        //    pass.filter(*cloud_filtered);
-        //    std::cerr << "PointCloud after filtering has: " << cloud_filtered->size() << " data points." << std::endl;
-
-        //    //ボクセルフィルタ
-        //    voxel_filter.setInputCloud(cloud_filtered);
-        //    {
-        //        float leafsize = 0.05f;
-        //        voxel_filter.setLeafSize(leafsize, leafsize, leafsize);
-        //        voxel_filter.filter(*cloud_voxel_filtered);
-        //    }
-        //    if (cloud_voxel_filtered->size() > 100000)continue;
-        //    std::cerr << "PointCloud after voxel filtering has: " << cloud_voxel_filtered->size() << " data points." << std::endl;
-        //    viewer.showCloud(cloud_voxel_filtered);
-
-        //    //法線計算
-        //    ne.setSearchMethod(tree);
-        //    ne.setInputCloud(cloud_voxel_filtered);
-        //    ne.setKSearch(50);
-        //    ne.compute(*cloud_normals);
-
-        //    // Create the segmentation object for the planar model and set all the parameters
-        //    seg.setInputCloud(cloud_voxel_filtered);
-        //    {
-        //        seg.setOptimizeCoefficients(true);
-        //        seg.setModelType(pcl::SACMODEL_NORMAL_PLANE);
-        //        seg.setNormalDistanceWeight(0.1);
-        //        seg.setMethodType(pcl::SAC_RANSAC);
-        //        seg.setMaxIterations(100);
-        //        seg.setDistanceThreshold(0.03);
-        //        seg.setInputNormals(cloud_normals);
-        //    }
-        //    // Obtain the plane inliers and coefficients
-        //    seg.segment(*inliers_plane, *coefficients_plane);
-        //    std::cerr << "Plane coefficients: " << *coefficients_plane << std::endl;
-
-        //    // Extract the planar inliers from the input cloud
-        //    extract.setInputCloud(cloud_voxel_filtered);
-        //    extract.setIndices(inliers_plane);
-        //    extract.setNegative(false);
-
-        //    // Write the planar inliers to disk
-        //    pcl::PointCloud<PointT>::Ptr cloud_plane(new pcl::PointCloud<PointT>());
-        //    extract.filter(*cloud_plane);
-        //    std::cerr << "PointCloud representing the planar component: " << cloud_plane->size() << " data points." << std::endl;
-        //    //writer.write("table_scene_mug_stereo_textured_plane.pcd", *cloud_plane, false);
-
-        //    // Remove the planar inliers, extract the rest
-        //    {
-        //        extract.setNegative(true);
-        //        extract.filter(*cloud_filtered2);
-        //        extract_normals.setNegative(true);
-        //        extract_normals.setInputCloud(cloud_normals);
-        //        extract_normals.setIndices(inliers_plane);
-        //        extract_normals.filter(*cloud_normals2);
-
-        //    }
-
-        //    // Create the segmentation object for cylinder segmentation and set all the parameters
-        //    {
-        //        seg.setOptimizeCoefficients(true);
-        //        seg.setModelType(pcl::SACMODEL_CYLINDER);
-        //        seg.setMethodType(pcl::SAC_RANSAC);
-        //        seg.setNormalDistanceWeight(0.1);
-        //        seg.setMaxIterations(10000);
-        //        seg.setDistanceThreshold(0.05);
-        //        seg.setRadiusLimits(0, 0.1);
-        //        seg.setInputCloud(cloud_filtered2);
-        //        seg.setInputNormals(cloud_normals2);
-        //    }
-
-        //    // Obtain the cylinder inliers and coefficients
-        //    seg.segment(*inliers_cylinder, *coefficients_cylinder);
-        //    //std::cerr << "Cylinder coefficients: " << *coefficients_cylinder << std::endl;
-
-        //    // Write the cylinder inliers to disk
-        //    extract.setInputCloud(cloud_filtered2);
-        //    extract.setIndices(inliers_cylinder);
-        //    extract.setNegative(false);
-        //    pcl::PointCloud<PointT>::Ptr cloud_cylinder(new pcl::PointCloud<PointT>());
-        //    extract.filter(*cloud_cylinder);
-        //    if (cloud_cylinder->points.empty())
-        //        std::cerr << "Can't find the cylindrical component." << std::endl;
-        //    else
-        //    {
-        //        //viewer.showCloud(cloud_cylinder);
-
-        //        std::cerr << "PointCloud representing the cylindrical component: " << cloud_cylinder->size() << " data points." << std::endl;
-        //        //writer.write("table_scene_mug_stereo_textured_cylinder.pcd", *cloud_cylinder, false);
-        //    }
-
-        //}
-    }
-
-    void rs2pcd(int x1, int y1, int x2, int y2) {
-
-        cv::Vec2d left_top = { (double)x1, (double)y1 };
-        cv::Vec2d right_under = { (double)x2, (double)y2 };
-
         //realsense
         rs2::pipeline pipeline;
         rs2::points points;
         rs2::pointcloud pointcloud;
-        rs2::colorizer color_map;
-        rs2::align align(RS2_STREAM_COLOR);
+        pipeline.start();
 
-        rs2::decimation_filter dec_filter;
-        dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 3);
-        rs2::disparity_transform depth_to_disparity(true);
-        rs2::disparity_transform disparity_to_depth(false);
-
-        rs2::spatial_filter spat_filter;
-        spat_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 2);
-        spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.5);
-        spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20);
-        spat_filter.set_option(RS2_OPTION_HOLES_FILL, 0);
-
-        rs2::temporal_filter temp_filter;
-        temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.4);
-        temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20);
-        temp_filter.set_option(RS2_OPTION_HOLES_FILL, 3);
-
-        rs2::hole_filling_filter hf_filter;
-        hf_filter.set_option(RS2_OPTION_HOLES_FILL, 1);
-
-
-        //pcl
-        boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("viewer"));
-        viewer->setBackgroundColor(0, 0, 0);
+        // All the objects needed
+        pcl::PCDReader reader;
         pcl::PassThrough<PointT> pass;
+        pcl::VoxelGrid<PointT> voxel_filter;
+        pcl::NormalEstimation<PointT, pcl::Normal> ne;
+        pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
+        pcl::PCDWriter writer;
+        pcl::ExtractIndices<PointT> extract;
+        pcl::ExtractIndices<pcl::Normal> extract_normals;
+        pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>());
+
+        // Datasets
+        pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
         pcl::PointCloud<PointT>::Ptr cloud_filtered(new pcl::PointCloud<PointT>);
+        pcl::PointCloud<PointT>::Ptr cloud_voxel_filtered(new pcl::PointCloud<PointT>());
+        pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
+        pcl::PointCloud<PointT>::Ptr cloud_filtered2(new pcl::PointCloud<PointT>);
+        pcl::PointCloud<pcl::Normal>::Ptr cloud_normals2(new pcl::PointCloud<pcl::Normal>);
+        pcl::ModelCoefficients::Ptr coefficients_plane(new pcl::ModelCoefficients);
+        pcl::ModelCoefficients::Ptr coefficients_cylinder(new pcl::ModelCoefficients);
+        pcl::PointIndices::Ptr inliers_plane(new pcl::PointIndices);
+        pcl::PointIndices::Ptr inliers_cylinder(new pcl::PointIndices);
 
-        //opencv
-        const auto window_name = "Display Image";
-        cv::namedWindow(window_name, cv::WINDOW_AUTOSIZE);
 
-
-        //strat
-        rs2::pipeline_profile profile = pipeline.start();
-        
-        //const auto intrinsics = profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>().get_intrinsics();
-        const auto intrinsics = profile.get_stream(RS2_STREAM_DEPTH).as<rs2::video_stream_profile>().get_intrinsics();
-        std::cout << "fx:" << intrinsics.fx << " fy:" << intrinsics.fy << std::endl;
-
-        auto sensor = profile.get_device().first<rs2::depth_sensor>();
-        auto scale = sensor.get_depth_scale();
-        std::cout << "depth scale: " << scale << std::endl;
-        
-
-        while (cv::getWindowProperty(window_name, cv::WND_PROP_AUTOSIZE) >= 0)
+        pcl::visualization::CloudViewer viewer("Cloud Viewer");
+        //メインループ
+        while (!viewer.wasStopped())
         {
             auto frames = pipeline.wait_for_frames();
-            // auto depths = frames.get_depth_frame();
-            // auto rgb = frames.get_color_frame();
+            auto depths = frames.get_depth_frame();
+            auto rgb = frames.get_color_frame();
 
-            //位置合わせ
-            auto aligned_frames = align.process(frames);
-            rs2::video_frame aligned_color_frame = aligned_frames.first(RS2_STREAM_COLOR);
-            rs2::depth_frame aligned_depth_frame = aligned_frames.get_depth_frame();
+            points = pointcloud.calculate(depths);
+            auto pcl_points = points_to_pcl(points);
+            //viewer.showCloud(pcl_points);
 
-            //opencv
-            {
-                using namespace cv;
-                //rs2::frame frame4cv = frames.get_depth_frame().apply_filter(color_map);
-                rs2::frame frame4cv = aligned_color_frame;
-
-                const int w = frame4cv.as<rs2::video_frame>().get_width();
-                const int h = frame4cv.as<rs2::video_frame>().get_height();
-
-                Mat image(Size(w, h), CV_8UC3, (void*)frame4cv.get_data(), Mat::AUTO_STEP);
-                cvtColor(image, image, COLOR_BGR2RGB);
-
-                //この辺にyolo
-                imshow(window_name, image);
-            }
-
-            //切り出し
-
-            float pixel[2];
-            float point[3];
-
-            int pixCount = aligned_color_frame.get_width() * aligned_color_frame.get_height();
-            
-            pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-            /*cloud->width = right_under[0] - left_top[0];
-            cloud->height = right_under[1] - left_top[1];*/
-            cloud->is_dense = false;
-
-            // vertical
-            for (int i = left_top[1]; i < right_under[1]; i++) {
-                //std::cout << "Debug:3" << std::endl;
-
-                // horizontal
-                for (int j = left_top[0]; j < right_under[0]; j++) {
-                    //std::cout << "Debug:4" << std::endl;
-                    pixel[0] = j;
-                    pixel[1] = i;
-
-                    //画像の位置→点群
-                    auto depth = aligned_depth_frame.get_distance(j, i);
-                    rs2_deproject_pixel_to_point(point, &intrinsics, pixel, depth);
-                    
-                    pcl::PointXYZ p;
-                    p.x = point[0];
-                    p.y = point[1];
-                    p.z = point[2];
-
-                    // auto k = i * cloud->width + j;
-                    cloud->points.push_back(p);
-
-                    // std::cerr << "x: " << p.x << "  y: " << p.y << "  z: " << p.z << std::endl;
-                }
-            }
-            std::cerr << "PointCloud cutting has: " << cloud->size() << " data points." << std::endl;
-            //std::cerr << "x: " << cloud->points[460800].x << "  y: " << cloud->points[460800].y << "  z: " << cloud->points[460800].z << std::endl;
-
-
-            //pcl
-            // Clear the view
-            viewer->removeAllShapes();
-            viewer->removeAllPointClouds();
-
-            //points = pointcloud.calculate(aligned_depth_frame);
-            // auto pcl_points = points_to_pcl(points);
-            auto pcl_points = cloud;
-
+            cloud = pcl_points;
+            //viewer.showCloud(cloud);
+            // Read in the cloud data
+            //reader.read("table_scene_mug_stereo_textured.pcd", *cloud);
+            std::cerr << "PointCloud has: " << cloud->size() << " data points." << std::endl;
 
 
             // Build a passthrough filter to remove spurious NaNs
-            pass.setInputCloud(pcl_points);
+            pass.setInputCloud(cloud);
             pass.setFilterFieldName("z");
-            pass.setFilterLimits(0.00000001, 2.0);
+            pass.setFilterLimits(0, 1.5);
             pass.filter(*cloud_filtered);
             std::cerr << "PointCloud after filtering has: " << cloud_filtered->size() << " data points." << std::endl;
-            //cloud_filtered = pcl_points;
 
-            // The pointcloud
-            viewer->addPointCloud<pcl::PointXYZ>(cloud_filtered, "coloud");
-            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "coloud");
-            viewer->addCoordinateSystem();
-            //viewer->resetCameraViewpoint();
-            viewer->spinOnce(10);
+            //ボクセルフィルタ
+            voxel_filter.setInputCloud(cloud_filtered);
+            {
+                float leafsize = 0.05f;
+                voxel_filter.setLeafSize(leafsize, leafsize, leafsize);
+                voxel_filter.filter(*cloud_voxel_filtered);
+            }
+            if (cloud_voxel_filtered->size() > 100000)continue;
+            std::cerr << "PointCloud after voxel filtering has: " << cloud_voxel_filtered->size() << " data points." << std::endl;
+            viewer.showCloud(cloud_voxel_filtered);
 
-            if (GetAsyncKeyState(VK_SPACE) & 1) {
-                // スペースが押されている時の処理
-                // 作成したPointCloudをPCD形式で保存する
-                cout << "savePCDFileASCII" << endl;
-                pcl::io::savePCDFileASCII("p_cloud_ascii.pcd", *cloud_filtered); // テキスト形式で保存する
+            //法線計算
+            ne.setSearchMethod(tree);
+            ne.setInputCloud(cloud_voxel_filtered);
+            ne.setKSearch(50);
+            ne.compute(*cloud_normals);
+
+            // Create the segmentation object for the planar model and set all the parameters
+            seg.setInputCloud(cloud_voxel_filtered);
+            {
+                seg.setOptimizeCoefficients(true);
+                seg.setModelType(pcl::SACMODEL_NORMAL_PLANE);
+                seg.setNormalDistanceWeight(0.1);
+                seg.setMethodType(pcl::SAC_RANSAC);
+                seg.setMaxIterations(100);
+                seg.setDistanceThreshold(0.03);
+                seg.setInputNormals(cloud_normals);
+            }
+            // Obtain the plane inliers and coefficients
+            seg.segment(*inliers_plane, *coefficients_plane);
+            std::cerr << "Plane coefficients: " << *coefficients_plane << std::endl;
+
+            // Extract the planar inliers from the input cloud
+            extract.setInputCloud(cloud_voxel_filtered);
+            extract.setIndices(inliers_plane);
+            extract.setNegative(false);
+
+            // Write the planar inliers to disk
+            pcl::PointCloud<PointT>::Ptr cloud_plane(new pcl::PointCloud<PointT>());
+            extract.filter(*cloud_plane);
+            std::cerr << "PointCloud representing the planar component: " << cloud_plane->size() << " data points." << std::endl;
+            //writer.write("table_scene_mug_stereo_textured_plane.pcd", *cloud_plane, false);
+
+            // Remove the planar inliers, extract the rest
+            {
+                extract.setNegative(true);
+                extract.filter(*cloud_filtered2);
+                extract_normals.setNegative(true);
+                extract_normals.setInputCloud(cloud_normals);
+                extract_normals.setIndices(inliers_plane);
+                extract_normals.filter(*cloud_normals2);
+
             }
 
+            // Create the segmentation object for cylinder segmentation and set all the parameters
+            {
+                seg.setOptimizeCoefficients(true);
+                seg.setModelType(pcl::SACMODEL_CYLINDER);
+                seg.setMethodType(pcl::SAC_RANSAC);
+                seg.setNormalDistanceWeight(0.1);
+                seg.setMaxIterations(10000);
+                seg.setDistanceThreshold(0.05);
+                seg.setRadiusLimits(0, 0.1);
+                seg.setInputCloud(cloud_filtered2);
+                seg.setInputNormals(cloud_normals2);
+            }
+
+            // Obtain the cylinder inliers and coefficients
+            seg.segment(*inliers_cylinder, *coefficients_cylinder);
+            //std::cerr << "Cylinder coefficients: " << *coefficients_cylinder << std::endl;
+
+            // Write the cylinder inliers to disk
+            extract.setInputCloud(cloud_filtered2);
+            extract.setIndices(inliers_cylinder);
+            extract.setNegative(false);
+            pcl::PointCloud<PointT>::Ptr cloud_cylinder(new pcl::PointCloud<PointT>());
+            extract.filter(*cloud_cylinder);
+            if (cloud_cylinder->points.empty())
+                std::cerr << "Can't find the cylindrical component." << std::endl;
+            else
+            {
+                //viewer.showCloud(cloud_cylinder);
+
+                std::cerr << "PointCloud representing the cylindrical component: " << cloud_cylinder->size() << " data points." << std::endl;
+                //writer.write("table_scene_mug_stereo_textured_cylinder.pcd", *cloud_cylinder, false);
+            }
 
         }
     }
