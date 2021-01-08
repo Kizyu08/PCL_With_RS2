@@ -36,6 +36,9 @@
     <ClInclude Include="points_position_detector.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="main.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="realsense.rc">
@@ -43,9 +46,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="rs2test.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
     <ClCompile Include="libstest.hpp">
       <Filter>ヘッダー ファイル</Filter>
     </ClCompile>
@@ -62,6 +62,9 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="common.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>

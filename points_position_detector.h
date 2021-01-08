@@ -25,34 +25,67 @@ typedef pcl::PointXYZ PointT;
 using namespace convertutil;
 using namespace libstest;
 
+class myBox
+{
+public:
+    //íÜêS
+    float x = 0;
+    float y = 0;
+    float z = 0;
+
+    //ï”ÇÃí∑Ç≥
+    float xLength = 0;
+    float yLength = 0;
+    float zLength = 0;
+};
+
 class points_position_detector
 {
 private:
-    //
-    //realsense
-    //
-    
-    
-    
-    
 
-    /*static rs2::decimation_filter dec_filter;
-    static rs2::spatial_filter spat_filter;
-    static rs2::temporal_filter temp_filter;
-    static rs2::hole_filling_filter hf_filter;*/
+    cv_dnn cv_dnn_instance;
 
-    //
-    //pcl
-    //
+    rs2::pipeline* pipeline;
 
-    //
-    //OpenCV
-    //
+    rs2::points points;
+    rs2::pointcloud pointcloud;
+    rs2::colorizer color_map;
+
+    rs2::pipeline_profile profile;
+
+    std::mutex imageMutex;
+    //std::mutex boxesMutex;
+
+    bool imageAllived = false;
+    cv::Mat image;
+    cv::Mat editedImage;
+
+    std::vector<myBox> boxes;
+
+    bool run = false;
+    std::thread detectorTheread;
+
     const std::string window_name = "Display Image";
+
+    void rs2_frame_to_mat(rs2::frame& src, cv::Mat& dst);
+    void save_image_and_pointclouds(cv::Mat& image, std::vector<pcl_ptr>& clouds);
+    void get_pointclouds(
+        std::vector<pcl_ptr>& cloud,
+        std::vector<cv::Rect>& rects,
+        std::vector<myBox>& boxes,
+        rs2::video_frame& color_frame,
+        rs2::depth_frame& depth_frame,
+        const rs2_intrinsics* intrinsics
+    );
+    void get_pointcloud(pcl_ptr, cv::Rect&, myBox&, rs2::video_frame&, rs2::depth_frame&, const rs2_intrinsics*);
 
 public:
     points_position_detector();
-    void get_targets_position();
-    void get_pointcloud(pcl_ptr, cv::Rect&, rs2::video_frame&, rs2::depth_frame&, const rs2_intrinsics*);
-};
+    ~points_position_detector();
 
+    void start_detector_thread();
+    void stop_detector_thread();
+    void detector();
+    void get_texture(cv::Mat&);
+    void get_boxes(std::vector<myBox>&);
+};

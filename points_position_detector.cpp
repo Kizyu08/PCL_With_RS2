@@ -1,18 +1,46 @@
 #include "points_position_detector.h"
 
-#define PPD points_position_detector
-
-
-PPD::points_position_detector() {
+points_position_detector::points_position_detector() 
+{
+    //unity落ちる
+    cv::namedWindow(window_name, cv::WINDOW_AUTOSIZE);
 }
 
-void PPD::get_targets_position() {
-    cv_dnn cv_dnn_instance;
+points_position_detector::~points_position_detector()
+{
+    //スレッド残留防止
+    stop_detector_thread();
+}
 
-    rs2::pipeline pipeline;
-    rs2::points points;
-    rs2::pointcloud pointcloud;
-    rs2::colorizer color_map;
+void points_position_detector::start_detector_thread()
+{
+    run = true;
+    //バインドを作らなきゃならないらしい
+    //インスタンスよりスレッドが長生きしないよう注意
+    detectorTheread = std::thread(std::bind(&points_position_detector::detector, this));
+
+
+}
+
+void points_position_detector::stop_detector_thread()
+{
+    if (run) {
+        run = false;
+        //スレッド終了待ち
+        detectorTheread.join();
+    }
+    cv::destroyAllWindows();
+}
+
+void points_position_detector::detector() 
+{
+    const rs2::context ctx;
+    pipeline = new rs2::pipeline(ctx);
+    profile = pipeline->start();
+
+    //YOLO
+
+    rs2::align align(RS2_STREAM_COLOR);
 
     //realsense
     /*dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 3);
@@ -26,12 +54,6 @@ void PPD::get_targets_position() {
     hf_filter.set_option(RS2_OPTION_HOLES_FILL, 1);*/
 
     //strat rs pipeline
-    rs2::pipeline_profile profile;
-    profile = pipeline.start();
-
-
-    //rs2
-    rs2::align align(RS2_STREAM_COLOR);
 
     //pcl
     boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("viewer"));
@@ -41,23 +63,24 @@ void PPD::get_targets_position() {
     pcl::PassThrough<PointT> pass;
     
     //opencv
-    cv::namedWindow(window_name, cv::WINDOW_AUTOSIZE);
 
 
     const auto intrinsics = profile.get_stream(RS2_STREAM_DEPTH).as<rs2::video_stream_profile>().get_intrinsics();
     std::cout << "fx:" << intrinsics.fx << " fy:" << intrinsics.fy << std::endl;
 
-    /*auto sensor = profile.get_device().first<rs2::depth_sensor>();
-    auto scale = sensor.get_depth_scale();
-    std::cout << "depth scale: " << scale << std::endl;*/
 
 
-    while (cv::getWindowProperty(window_name, cv::WND_PROP_AUTOSIZE) >= 0)
-    {
+    //while (cv::getWindowProperty(window_name, cv::WND_PROP_AUTOSIZE) >= 0)
+    while (run)
+    {   
+        {
+            std::lock_guard<std::mutex> lock(imageMutex);
+            boxes.clear();
+        }
         //
         // Realsense
         //
-        auto frames = pipeline.wait_for_frames();
+        auto frames = pipeline->wait_for_frames();
 
         //位置合わせ
         auto aligned_frames = align.process(frames);
@@ -67,99 +90,172 @@ void PPD::get_targets_position() {
         //
         // OpenCV
         //
-        //rs2::frame frame4cv = frames.get_depth_frame().apply_filter(color_map);
-        rs2::frame frame4cv = aligned_color_frame;
+        {
+            std::lock_guard<std::mutex> lock(imageMutex);
+            rs2_frame_to_mat(aligned_color_frame, image);
+        }
+        imshow(window_name, image);
 
-        const int w = frame4cv.as<rs2::video_frame>().get_width();
-        const int h = frame4cv.as<rs2::video_frame>().get_height();
-
-        cv::Mat image(cv::Size(w, h), CV_8UC3, (void*)frame4cv.get_data(), cv::Mat::AUTO_STEP);
-        cvtColor(image, image, cv::COLOR_BGR2RGB);
-
-        //この辺にyolo
 
         //dev
         std::vector<cv::Rect> rects;
-        //cv::Rect rect(300, 300, 300, 300);
-        //rects.push_back(rect);
 
-        cv_dnn_instance.exec(image, image, rects);
+        // YOLO
+        std::vector<int> classIds;
+        cv_dnn_instance.exec(image, editedImage, rects, classIds, imageMutex);
 
-        
         //切り出し
         if (rects.size() > 0) {
-            std::vector<pcl_ptr> clouds;
-            for (cv::Rect& rect : rects) {
-                if (rect.x + rect.width < aligned_color_frame.get_width()
-                    && rect.y + rect.height < aligned_color_frame.get_height()
-                    && rect.x >= 0 
-                    && rect.y >= 0) {
-                    //std::cerr << "x: " << rect.x << "  y: " << rect.y << "  width: " << rect.width << "  height: " << rect.height <<  std::endl;
-                    pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-                    get_pointcloud(cloud, rect, aligned_color_frame, aligned_depth_frame, &intrinsics);
-                    std::cerr << "PointCloud cutting has: " << cloud->size() << " data points." << std::endl;
-                    clouds.push_back(cloud);
+            std::vector<pcl_ptr> clouds; 
+            points_position_detector::get_pointclouds(clouds, rects, boxes, aligned_color_frame, aligned_depth_frame, &intrinsics);
 
-                }
-                //std::cerr << "x: " << cloud->points[460800].x << "  y: " << cloud->points[460800].y << "  z: " << cloud->points[460800].z << std::endl;
-
-                //cv::rectangle(image, rect, cv::Scalar(0, 0, 255), 4, cv::LINE_4);
-            }
             //
             // PCL
             //
 
-            // Clear the view
-            viewer->removeAllShapes();
-            viewer->removeAllPointClouds();
+            std::vector<pcl_ptr> clouds_filterd;
 
             //各点群に対して処理
             for (int i = 0; i < clouds.size(); i++)
             {
-                // points = pointcloud.calculate(aligned_depth_frame);
-                // auto pcl_points = points_to_pcl(points);
-                auto pcl_points = clouds[i];
+                std::cout << i << std::endl;
+                if (classIds[i] == 39 || classIds[i] == 40 || classIds[i] == 41 || classIds[i] == 64) {
+                    std::cerr << "PointCloud before filtering has: " << clouds[i]->size() << " data points." << std::endl;
+                    // Clear the view
+                    viewer->removeAllShapes();
+                    viewer->removeAllPointClouds();
 
-                // Build a passthrough filter to remove spurious NaNs
-                pass.setInputCloud(pcl_points);
-                pass.setFilterFieldName("z");
-                pass.setFilterLimits(0.00000001, 2.0);
-                pass.filter(*cloud_filtered);
-                std::cerr << "PointCloud after filtering has: " << cloud_filtered->size() << " data points." << std::endl;
+                    // Build a passthrough filter to remove spurious NaNs
+                    pass.setInputCloud(clouds[i]);
+                    pass.setFilterFieldName("z");
+                    pass.setFilterLimits(0.00000001, 2.0);
+                    pass.filter(*cloud_filtered);
+                    std::cerr << "PointCloud after filtering has: " << cloud_filtered->size() << " data points." << std::endl;
 
-                // viewerに追加
-                viewer->addPointCloud<PointT>(cloud_filtered, "coloud" + i);
+                    clouds_filterd.push_back(cloud_filtered);
 
-                if (GetAsyncKeyState(VK_SPACE) & 1) {
-                    // スペースが押されている時の処理
-                    // 作成したPointCloudをPCD形式で保存する
-                    cout << "savePCDFileASCII" << endl;
-                    // テキスト形式で保存する
-                    pcl::io::savePCDFileASCII("p_cloud_ascii.pcd", *cloud_filtered);
-
-                    cv::imwrite("image.png", image);
+                    // viewerに追加
+                    viewer->addPointCloud<PointT>(cloud_filtered, "coloud" + i);
                 }
-
             }
 
-            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "coloud");
-            viewer->addCoordinateSystem();
-            viewer->spinOnce(10);
-        }
-        imshow(window_name, image);
+            
+            if (clouds_filterd.size() > 0) {
+                if (GetAsyncKeyState(VK_SPACE) & 1) {
+                    // スペースが押されている時の処理
+                    std::lock_guard<std::mutex> lock(imageMutex);
+                    save_image_and_pointclouds(image, clouds_filterd);
+                }
 
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "coloud");
+                viewer->addCoordinateSystem();
+                viewer->spinOnce(10);
+            }
+        }
     }
 }
 
-void PPD::get_pointcloud(
-    pcl_ptr cloud, 
-    cv::Rect& rect, 
-    rs2::video_frame& color_frame, 
-    rs2::depth_frame& depth_frame, 
+void points_position_detector::get_texture(cv::Mat& out)
+{
+    cv::Mat src;
+    {
+        std::lock_guard<std::mutex> lock(imageMutex);
+        out = image.clone();
+    }
+    if (out.cols > 0) {
+        cv::cvtColor(out, out, cv::COLOR_BGR2RGBA);
+    }
+}
+
+void points_position_detector::get_boxes(std::vector<myBox>& boxes)
+{
+    std::lock_guard<std::mutex> lock(imageMutex);
+    boxes = this->boxes;
+}
+
+
+void points_position_detector::rs2_frame_to_mat(
+    rs2::frame& src, 
+    cv::Mat& dst)
+{
+    rs2::frame frame4cv = src;
+
+    const int w = frame4cv.as<rs2::video_frame>().get_width();
+    const int h = frame4cv.as<rs2::video_frame>().get_height();
+
+    dst = cv::Mat(cv::Size(w, h), CV_8UC3, (void*)frame4cv.get_data(), cv::Mat::AUTO_STEP);
+    cv::cvtColor(dst, dst, cv::COLOR_BGR2RGB);
+}
+
+void points_position_detector::save_image_and_pointclouds(
+    cv::Mat& image, 
+    std::vector<pcl_ptr>& clouds)
+{
+    // 作成したPointCloudをPCD形式で保存する
+    cout << "savePCDFileASCII" << endl;
+    
+    // テキスト形式で保存する
+    for (int i = 0; i < clouds.size(); i++) {
+        pcl::io::savePCDFileASCII("p_cloud_ascii_" + std::to_string(i) + ".pcd", *clouds[i]);
+    }
+
+    // 画像保存
+    cv::imwrite("image.png", image);
+}
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name="clouds">出力</param>
+/// <param name="rects">画像上の枠</param>
+/// <param name="aligned_color_frame">rsのvideo_frame</param>
+/// <param name="aligned_depth_frame">rsのdepth_frame</param>
+/// <param name="intrinsics"></param>
+void points_position_detector::get_pointclouds(
+    std::vector<pcl_ptr>& clouds,
+    std::vector<cv::Rect>& rects,
+    std::vector<myBox>& boxes,
+    rs2::video_frame& aligned_color_frame,
+    rs2::depth_frame& aligned_depth_frame,
+    const rs2_intrinsics* intrinsics)
+{
+    int frameWidth = aligned_color_frame.get_width();
+    int frameHeight = aligned_color_frame.get_height();
+
+    for (cv::Rect& rect : rects) {
+        if (rect.x + rect.width > frameWidth)
+            rect.width = frameWidth - rect.x;
+        if (rect.y + rect.height > frameHeight)
+            rect.height = frameHeight - rect.y;
+        if (rect.x < 0)
+            rect.x = 0;
+        if (rect.y < 0)
+            rect.y = 0;
+
+        pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        myBox box;
+        get_pointcloud(cloud, rect, box, aligned_color_frame, aligned_depth_frame, intrinsics);
+        std::cerr << "PointCloud cutting has: " << cloud->size() << " data points." << std::endl;
+        clouds.push_back(cloud);        
+        {
+            std::lock_guard<std::mutex> lock(imageMutex);
+            boxes.push_back(box);
+        }
+    }
+}
+
+void points_position_detector::get_pointcloud(
+    pcl_ptr cloud,
+    cv::Rect& rect,
+    myBox& box,
+    rs2::video_frame& color_frame,
+    rs2::depth_frame& depth_frame,
     const rs2_intrinsics* intrinsics
 ) {
     float pixel[2];
     float point[3];
+
+    pcl::PointXYZ min, max;
 
     cloud->is_dense = false;
 
@@ -176,8 +272,40 @@ void PPD::get_pointcloud(
 
             pcl::PointXYZ p(point[0], point[1], point[2]);
             cloud->points.push_back(p);
+            
 
             // std::cerr << "x: " << p.x << "  y: " << p.y << "  z: " << p.z << std::endl;
         }
     }
+
+    //pclのminMax3Dが何故か使えない&遅いらしいのでベタ
+    float min_x = cloud->points[0].x, 
+        min_y = cloud->points[0].y, 
+        min_z = cloud->points[0].z, 
+        max_x = cloud->points[0].x, 
+        max_y = cloud->points[0].y, 
+        max_z = cloud->points[0].z;
+    for (size_t i = 1; i < cloud->points.size(); ++i) {
+        if (cloud->points[i].x <= min_x)
+            min_x = cloud->points[i].x;
+        else if (cloud->points[i].y <= min_y)
+            min_y = cloud->points[i].y;
+        else if (cloud->points[i].z <= min_z)
+            min_z = cloud->points[i].z;
+        else if (cloud->points[i].x >= max_x)
+            max_x = cloud->points[i].x;
+        else if (cloud->points[i].y >= max_y)
+            max_y = cloud->points[i].y;
+        else if (cloud->points[i].z >= max_z)
+            max_z = cloud->points[i].z;
+    }
+
+    box.xLength = max_x - min_x;
+    box.yLength = max_y - min_y;
+    box.zLength = max_z - min_z;
+    box.x = min_x + (box.xLength / 2);
+    box.y = min_y + (box.yLength / 2);
+    box.z = min_z + (box.zLength / 2);
+    std::cout << "box x: " << box.x << "  y: " << box.y << "  z: " << box.z << std::endl;
+
 }

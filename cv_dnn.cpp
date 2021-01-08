@@ -50,31 +50,35 @@ namespace libstest {
 
     }
 
-    void cv_dnn::exec(cv::Mat& frame, cv::Mat& out, std::vector<cv::Rect>& boxes)
+    void cv_dnn::exec(cv::Mat& frame, cv::Mat& out, std::vector<cv::Rect>& boxes, std::vector<int>& classIds, std::mutex& imgMtx)
     {
-        if (frame.rows == 0 || frame.cols == 0) {
+        {
+            std::lock_guard<std::mutex> lock(imgMtx);
+            out = frame.clone();
+        }
+        if (out.rows == 0 || out.cols == 0) {
             return;
         }
         //処理
         // Create a 4D blob from a frame.
         cv::Size inpSize(
-            inpWidth > 0 ? inpWidth : frame.cols,
-            inpHeight > 0 ? inpHeight : frame.rows
+            inpWidth > 0 ? inpWidth : out.cols,
+            inpHeight > 0 ? inpHeight : out.rows
         );
-        cv::dnn::blobFromImage(frame, blob, scale, inpSize, mean, swapRB, false);
+        cv::dnn::blobFromImage(out, blob, scale, inpSize, mean, swapRB, false);
 
         // Run a model.
         net.setInput(blob);
         if (net.getLayer(0)->outputNameToIndex("im_info") != -1)  // Faster-RCNN or R-FCN
         {
-            resize(frame, frame, inpSize);
+            resize(out, out, inpSize);
             cv::Mat imInfo = (cv::Mat_<float>(1, 3) << inpSize.height, inpSize.width, 1.6f);
             net.setInput(imInfo, "im_info");
         }
         std::vector<cv::Mat> outs;
         net.forward(outs, outNames);
 
-        postprocess(frame, outs, net, boxes);
+        postprocess(out, outs, net, boxes, classIds);
 
 
         // Put efficiency information.
@@ -87,12 +91,11 @@ namespace libstest {
         //imshow(kWinName, frame);
     }
 
-    void cv_dnn::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs, cv::dnn::Net& net, std::vector<cv::Rect>& boxes)
+    void cv_dnn::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs, cv::dnn::Net& net, std::vector<cv::Rect>& boxes, std::vector<int>& classIds)
     {
         static std::vector<int> outLayers = net.getUnconnectedOutLayers();
         static std::string outLayerType = net.getLayer(outLayers[0])->type;
 
-        std::vector<int> classIds;
         std::vector<float> confidences;
         if (outLayerType == "DetectionOutput")
         {
