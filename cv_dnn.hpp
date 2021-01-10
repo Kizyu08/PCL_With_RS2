@@ -1,6 +1,7 @@
 #pragma once
 #include <fstream>
 #include <sstream>
+#include <Windows.h>
 
 #include <opencv2/dnn.hpp>
 #include <opencv2/imgproc.hpp>
@@ -28,9 +29,13 @@ namespace libstest {
         bool swapRB = true;
         std::vector<std::string> classes;
 
-         std::string modelPath = "C:\\lib\\darknet\\x64\\cfg\\yolov3-tiny.cfg";
-         std::string configPath = "I:\\Software\\_DEV\\yolo\\tukaeta\\yolov3-tiny.weights";
-         std::string file = "C:\\lib\\darknet\\x64\\data\\coco.names";
+        std::string iniPath = "config.ini";
+        std::string modelPath = "";
+        std::string configPath = "";
+        std::string namesPath = "";
+        /*std::string modelPath = "C:\\lib\\darknet\\x64\\cfg\\yolov3-tiny.cfg";
+        std::string configPath = "I:\\Software\\_DEV\\yolo\\tukaeta\\yolov3-tiny.weights";
+        std::string namesPath = "C:\\lib\\darknet\\x64\\data\\coco.names";*/
         /*std::string modelPath = "C:\\Users\\onodera\\Documents\\githubRepos\\tukaeta\\yolov3-tiny.weights";
         std::string configPath = "C:\\Users\\onodera\\Documents\\githubRepos\\tukaeta\\yolov3-tiny.cfg";
         std::string file = "C:\\Users\\onodera\\Documents\\githubRepos\\tukaeta\\coco.names";*/
@@ -50,6 +55,10 @@ namespace libstest {
         void postprocess(cv::Mat& frame, const std::vector<cv::Mat>& out, cv::dnn::Net& net, std::vector<cv::Rect>& boxes, std::vector<int>& classIds);
         void drawPred(int classId, float conf, int left, int top, int right, int bottom, cv::Mat& frame);
         void callback(int pos, void* userdata);
+
+        void readSettingsFromFile();
+        bool checkFileExistence(std::string& str);
+        std::string GetIniPath();
 
         std::vector<cv::String> getOutputsNames(const cv::dnn::Net& net);
     };

@@ -26,8 +26,11 @@
 using namespace common;
 namespace libstest {
     cv_dnn::cv_dnn() {
+        //iniファイル読み取り
+        readSettingsFromFile();
+
         // Open file with classes names.
-        std::ifstream ifs(file.c_str());
+        std::ifstream ifs(namesPath.c_str());
         if (!ifs.is_open());
         //CV_Error(Error::StsError, "File " + file + " not found");
         std::string line;
@@ -215,5 +218,37 @@ namespace libstest {
     void cv_dnn::callback(int pos, void*)
     {
         confThreshold = pos * 0.01f;
+    }
+
+    void cv_dnn::readSettingsFromFile()
+    {
+        using namespace boost::property_tree;
+        iniPath = GetIniPath();
+
+        if (checkFileExistence(iniPath)) {
+            ptree pt;
+            read_ini(iniPath, pt);
+            if (boost::optional<std::string> str = pt.get_optional<std::string>("YOLO.Model"))
+            modelPath = str.get();
+            if (boost::optional<std::string> str = pt.get_optional<std::string>("YOLO.Config"))
+            configPath = str.get();
+            if (boost::optional<std::string> str = pt.get_optional<std::string>("YOLO.Names"))
+            namesPath = str.get();
+        }
+    }
+
+    std::string cv_dnn::GetIniPath()
+    {
+        char dir[MAX_PATH];
+        ::GetModuleFileNameA(NULL, dir, MAX_PATH);  // 実行ファイルのパスを取得
+        char* pdest = strrchr(dir, '\\');          // 実行ファイルのパスから
+        pdest[1] = '\0';                           // 実行ファイル名だけ切り取る
+        return strcat(dir, "config.ini");                // iniファイル名を付け足す。
+    }
+
+    bool cv_dnn::checkFileExistence(std::string& str)
+    {
+        std::ifstream ifs(str);
+        return ifs.is_open();
     }
 }
