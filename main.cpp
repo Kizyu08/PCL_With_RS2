@@ -9,7 +9,7 @@ int main()
     //rabSample();
 
     //ppd.detector();
-    startDetector();
+    startDetector(GetIniPath().c_str());
     int w = 0;
     int h = 0;
     while (w < 1) {
@@ -18,12 +18,12 @@ int main()
         h = getHeight();
         cv::waitKey(10);
     }
+    int size = getDataSize();
+    //std::cout << "datasize:" << size << std::endl;
     
 
     while (true) {
         getImage();
-        int size = getDataSize();
-        std::cout << "datasize:" << size << std::endl;
         //getImageData();
 
         getBoxes();
@@ -35,16 +35,16 @@ int main()
             std::cout << "count: " << count << std::endl;
             std::cout << "pos x: " << data[0] << "pos y: " << data[1] << "pos z: " << data[2] << std::endl;
             delete[] data;*/
-
         }
         cv::waitKey(10);
     }
     return 0;
 }
 
-UNITYEXPORT void UNITYCALLCONV startDetector()
+UNITYEXPORT void UNITYCALLCONV startDetector(const char* iniPath)
 {
-    ppd.start_detector_thread();
+    auto iniPathStr = std::string(iniPath);
+    ppd.start_detector_thread(iniPathStr);
 }
 
 UNITYEXPORT void UNITYCALLCONV stopDetector()
@@ -103,4 +103,13 @@ UNITYEXPORT float* UNITYCALLCONV getBoxesData()
     }
     return boxData;
     //std::memcpy(dataPtr, data, size);
+}
+
+std::string GetIniPath()
+{
+    char dir[MAX_PATH];
+    ::GetModuleFileNameA(NULL, dir, MAX_PATH);  // 実行ファイルのパスを取得
+    char* pdest = strrchr(dir, '\\');          // 実行ファイルのパスから
+    pdest[1] = '\0';                           // 実行ファイル名だけ切り取る
+    return strcat(dir, "config.ini");                // iniファイル名を付け足す。
 }

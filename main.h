@@ -19,7 +19,7 @@ extern "C"
 	float* boxData;
 
 	//detector
-	UNITYEXPORT void UNITYCALLCONV startDetector();
+	UNITYEXPORT void UNITYCALLCONV startDetector(const char*);
 	UNITYEXPORT void UNITYCALLCONV stopDetector();
 	
 	//image
@@ -34,3 +34,5 @@ extern "C"
 	UNITYEXPORT int UNITYCALLCONV getBoxesCount();
 	UNITYEXPORT float* UNITYCALLCONV getBoxesData();
 }
+
+std::string GetIniPath();

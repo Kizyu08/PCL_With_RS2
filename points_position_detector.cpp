@@ -12,9 +12,11 @@ points_position_detector::~points_position_detector()
     stop_detector_thread();
 }
 
-void points_position_detector::start_detector_thread()
+void points_position_detector::start_detector_thread(std::string& path)
 {
     run = true;
+    //ini読み込み
+    cv_dnn_instance.setConfig(path);
     //バインドを作らなきゃならないらしい
     //インスタンスよりスレッドが長生きしないよう注意
     detectorTheread = std::thread(std::bind(&points_position_detector::detector, this));
@@ -53,30 +55,37 @@ void points_position_detector::detector()
     temp_filter.set_option(RS2_OPTION_HOLES_FILL, 3);
     hf_filter.set_option(RS2_OPTION_HOLES_FILL, 1);*/
 
-    //strat rs pipeline
-
     //pcl
     boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("viewer"));
     viewer->setBackgroundColor(0, 0, 0);
 
-    pcl::PointCloud<PointT>::Ptr cloud_filtered(new pcl::PointCloud<PointT>);
+    pcl_ptr cloud_pass_filtered(new pcl::PointCloud<PointT>);
+    pcl_ptr cloud_sor_filtered(new pcl::PointCloud<PointT>);
     pcl::PassThrough<PointT> pass;
     
     //opencv
 
-
+    //rs
     const auto intrinsics = profile.get_stream(RS2_STREAM_DEPTH).as<rs2::video_stream_profile>().get_intrinsics();
+    
+    //焦点距離px
     std::cout << "fx:" << intrinsics.fx << " fy:" << intrinsics.fy << std::endl;
 
+    //FOV計算（不要）
+    auto wfov = 2 * std::atan(intrinsics.width / (2 * intrinsics.fx));
+    auto hfov = 2 * std::atan(intrinsics.height / (2 * intrinsics.fy));
+    std::cout << "W_FOV: " << wfov << "  H_FOV: " << hfov << std::endl;
 
 
-    //while (cv::getWindowProperty(window_name, cv::WND_PROP_AUTOSIZE) >= 0)
+
+    //メインループ
     while (run)
     {   
         {
             std::lock_guard<std::mutex> lock(imageMutex);
             boxes.clear();
         }
+
         //
         // Realsense
         //
@@ -90,11 +99,14 @@ void points_position_detector::detector()
         //
         // OpenCV
         //
+        rs2_frame_to_mat(aligned_color_frame, image);
+        
         {
             std::lock_guard<std::mutex> lock(imageMutex);
-            rs2_frame_to_mat(aligned_color_frame, image);
+            image_ext = image.clone();
         }
-        imshow(window_name, image);
+        
+        //imshow(window_name, image);
 
 
         //dev
@@ -102,12 +114,17 @@ void points_position_detector::detector()
 
         // YOLO
         std::vector<int> classIds;
-        cv_dnn_instance.exec(image, editedImage, rects, classIds, imageMutex);
+        cv_dnn_instance.exec(image, editedImage, rects, classIds);
+        //image_ext = image.clone();
+
+        imshow(window_name, editedImage);
 
         //切り出し
         if (rects.size() > 0) {
             std::vector<pcl_ptr> clouds; 
-            points_position_detector::get_pointclouds(clouds, rects, boxes, aligned_color_frame, aligned_depth_frame, &intrinsics);
+
+            //yoloの結果rectsの範囲内の点群を深度画像から求める
+            points_position_detector::get_pointclouds(clouds, rects, aligned_color_frame, aligned_depth_frame, &intrinsics);
 
             //
             // PCL
@@ -115,27 +132,62 @@ void points_position_detector::detector()
 
             std::vector<pcl_ptr> clouds_filterd;
 
+            // Clear the view
+            viewer->removeAllShapes();
+            viewer->removeAllPointClouds();
+
             //各点群に対して処理
             for (int i = 0; i < clouds.size(); i++)
             {
-                std::cout << i << std::endl;
+
+                //std::cout << i << std::endl;
+                //idでフィルタ
+                //39 bottle
+                //40 wine glass
+                //41 cup
+                //64 mouse
                 if (classIds[i] == 39 || classIds[i] == 40 || classIds[i] == 41 || classIds[i] == 64) {
                     std::cerr << "PointCloud before filtering has: " << clouds[i]->size() << " data points." << std::endl;
-                    // Clear the view
-                    viewer->removeAllShapes();
-                    viewer->removeAllPointClouds();
 
                     // Build a passthrough filter to remove spurious NaNs
+                    //奥行方向フィルタ
                     pass.setInputCloud(clouds[i]);
+                    //Z軸
                     pass.setFilterFieldName("z");
-                    pass.setFilterLimits(0.00000001, 2.0);
-                    pass.filter(*cloud_filtered);
-                    std::cerr << "PointCloud after filtering has: " << cloud_filtered->size() << " data points." << std::endl;
+                    //10cm-1m
+                    pass.setFilterLimits(0.01, 1);
+                    pass.filter(*cloud_pass_filtered);
+                    std::cerr << "PointCloud after passfilter has: " << cloud_pass_filtered->size() << " data points." << std::endl;
 
-                    clouds_filterd.push_back(cloud_filtered);
+                    Remove_outliers(cloud_pass_filtered, cloud_sor_filtered);
+                    std::cerr << "PointCloud after sorfilter has: " << cloud_sor_filtered->size() << " data points." << std::endl;
+
+
+                    clouds_filterd.push_back(cloud_sor_filtered);
 
                     // viewerに追加
-                    viewer->addPointCloud<PointT>(cloud_filtered, "coloud" + i);
+                    viewer->addPointCloud<PointT>(cloud_sor_filtered, "coloud" + i);
+                    //viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "coloud" + i);
+                }
+            }
+            {
+                std::lock_guard<std::mutex> lock(imageMutex);
+                boxes.clear();
+
+                for (int i = 0; i < clouds_filterd.size(); i++)
+                {
+
+                    myBox box;
+                    GetBox(clouds_filterd[i], box);
+                    boxes.push_back(box);
+
+                    auto min_x = box.x - (box.xLength / 2);
+                    auto min_y = box.y - (box.yLength / 2);
+                    auto min_z = box.z - (box.zLength / 2);
+                    auto max_x = box.x + (box.xLength / 2);
+                    auto max_y = box.y + (box.yLength / 2);
+                    auto max_z = box.z + (box.zLength / 2);
+                    viewer->addCube(min_x, max_x, min_y, max_y, min_z, max_z, 1, 1, 1, "cube" + i);
                 }
             }
 
@@ -143,12 +195,11 @@ void points_position_detector::detector()
             if (clouds_filterd.size() > 0) {
                 if (GetAsyncKeyState(VK_SPACE) & 1) {
                     // スペースが押されている時の処理
-                    std::lock_guard<std::mutex> lock(imageMutex);
                     save_image_and_pointclouds(image, clouds_filterd);
                 }
 
-                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "coloud");
                 viewer->addCoordinateSystem();
+                viewer->setRepresentationToWireframeForAllActors();
                 viewer->spinOnce(10);
             }
         }
@@ -157,12 +208,12 @@ void points_position_detector::detector()
 
 void points_position_detector::get_texture(cv::Mat& out)
 {
-    cv::Mat src;
     {
         std::lock_guard<std::mutex> lock(imageMutex);
-        out = image.clone();
+        out = image_ext.clone();
     }
     if (out.cols > 0) {
+        cv::flip(out, out, 0);
         cv::cvtColor(out, out, cv::COLOR_BGR2RGBA);
     }
 }
@@ -214,7 +265,6 @@ void points_position_detector::save_image_and_pointclouds(
 void points_position_detector::get_pointclouds(
     std::vector<pcl_ptr>& clouds,
     std::vector<cv::Rect>& rects,
-    std::vector<myBox>& boxes,
     rs2::video_frame& aligned_color_frame,
     rs2::depth_frame& aligned_depth_frame,
     const rs2_intrinsics* intrinsics)
@@ -233,21 +283,16 @@ void points_position_detector::get_pointclouds(
             rect.y = 0;
 
         pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        myBox box;
-        get_pointcloud(cloud, rect, box, aligned_color_frame, aligned_depth_frame, intrinsics);
+        get_pointcloud(cloud, rect, aligned_color_frame, aligned_depth_frame, intrinsics);
         std::cerr << "PointCloud cutting has: " << cloud->size() << " data points." << std::endl;
-        clouds.push_back(cloud);        
-        {
-            std::lock_guard<std::mutex> lock(imageMutex);
-            boxes.push_back(box);
-        }
+
+        clouds.push_back(cloud);       
     }
 }
 
 void points_position_detector::get_pointcloud(
     pcl_ptr cloud,
     cv::Rect& rect,
-    myBox& box,
     rs2::video_frame& color_frame,
     rs2::depth_frame& depth_frame,
     const rs2_intrinsics* intrinsics
@@ -270,20 +315,35 @@ void points_position_detector::get_pointcloud(
             auto depth = depth_frame.get_distance(j, i);
             rs2_deproject_pixel_to_point(point, intrinsics, pixel, depth);
 
-            pcl::PointXYZ p(point[0], point[1], point[2]);
-            cloud->points.push_back(p);
+            if (point[0] != 0 && point[1] != 0 && point[2] != 0) {
+                pcl::PointXYZ p(point[0], point[1], point[2]);
+                cloud->points.push_back(p);
+            }
             
 
             // std::cerr << "x: " << p.x << "  y: " << p.y << "  z: " << p.z << std::endl;
         }
     }
+}
 
+void points_position_detector::Remove_outliers(pcl_ptr cloud, pcl_ptr out)
+{
+    pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
+    sor.setInputCloud(cloud);//外れ値を除去する点群を入力
+    sor.setMeanK(50);//MeanKを設定
+    sor.setStddevMulThresh(0.1);
+    sor.setNegative(false);//外れ値を出力する場合はtrueにする
+    sor.filter(*out);//出力  
+}
+
+void points_position_detector::GetBox(pcl_ptr cloud, myBox& box) 
+{
     //pclのminMax3Dが何故か使えない&遅いらしいのでベタ
-    float min_x = cloud->points[0].x, 
-        min_y = cloud->points[0].y, 
-        min_z = cloud->points[0].z, 
-        max_x = cloud->points[0].x, 
-        max_y = cloud->points[0].y, 
+    float min_x = cloud->points[0].x,
+        min_y = cloud->points[0].y,
+        min_z = cloud->points[0].z,
+        max_x = cloud->points[0].x,
+        max_y = cloud->points[0].y,
         max_z = cloud->points[0].z;
     for (size_t i = 1; i < cloud->points.size(); ++i) {
         if (cloud->points[i].x <= min_x)
@@ -306,6 +366,7 @@ void points_position_detector::get_pointcloud(
     box.x = min_x + (box.xLength / 2);
     box.y = min_y + (box.yLength / 2);
     box.z = min_z + (box.zLength / 2);
-    std::cout << "box x: " << box.x << "  y: " << box.y << "  z: " << box.z << std::endl;
 
+    std::cout << "box x: " << box.x << "  y: " << box.y << "  z: " << box.z << std::endl;
+    std::cout << "xl: " << box.xLength << "  yl: " << box.yLength << "  zl: " << box.zLength << std::endl;
 }

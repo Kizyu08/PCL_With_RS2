@@ -49,7 +49,8 @@ namespace libstest {
 
     public:
         cv_dnn();
-        void exec(cv::Mat& input, cv::Mat& out, std::vector<cv::Rect>&, std::vector<int>& classIds, std::mutex& imgMtx);
+        void setConfig(std::string& path);
+        void exec(cv::Mat& input, cv::Mat& out, std::vector<cv::Rect>&, std::vector<int>& classIds);
 
     private:
         void postprocess(cv::Mat& frame, const std::vector<cv::Mat>& out, cv::dnn::Net& net, std::vector<cv::Rect>& boxes, std::vector<int>& classIds);
@@ -58,7 +59,6 @@ namespace libstest {
 
         void readSettingsFromFile();
         bool checkFileExistence(std::string& str);
-        std::string GetIniPath();
 
         std::vector<cv::String> getOutputsNames(const cv::dnn::Net& net);
     };

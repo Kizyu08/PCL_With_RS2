@@ -26,6 +26,13 @@
 using namespace common;
 namespace libstest {
     cv_dnn::cv_dnn() {
+
+    }
+
+    void cv_dnn::setConfig(std::string& path)
+    {
+        iniPath = path;
+
         //iniファイル読み取り
         readSettingsFromFile();
 
@@ -50,15 +57,11 @@ namespace libstest {
         //namedWindow(kWinName, WINDOW_NORMAL);
         //int initialConf = (int)(confThreshold * 100);
         //createTrackbar("Confidence threshold, %", kWinName, &initialConf, 99, callback);
-
     }
 
-    void cv_dnn::exec(cv::Mat& frame, cv::Mat& out, std::vector<cv::Rect>& boxes, std::vector<int>& classIds, std::mutex& imgMtx)
+    void cv_dnn::exec(cv::Mat& frame, cv::Mat& out, std::vector<cv::Rect>& boxes, std::vector<int>& classIds)
     {
-        {
-            std::lock_guard<std::mutex> lock(imgMtx);
-            out = frame.clone();
-        }
+        out = frame.clone();
         if (out.rows == 0 || out.cols == 0) {
             return;
         }
@@ -223,7 +226,6 @@ namespace libstest {
     void cv_dnn::readSettingsFromFile()
     {
         using namespace boost::property_tree;
-        iniPath = GetIniPath();
 
         if (checkFileExistence(iniPath)) {
             ptree pt;
@@ -237,14 +239,7 @@ namespace libstest {
         }
     }
 
-    std::string cv_dnn::GetIniPath()
-    {
-        char dir[MAX_PATH];
-        ::GetModuleFileNameA(NULL, dir, MAX_PATH);  // 実行ファイルのパスを取得
-        char* pdest = strrchr(dir, '\\');          // 実行ファイルのパスから
-        pdest[1] = '\0';                           // 実行ファイル名だけ切り取る
-        return strcat(dir, "config.ini");                // iniファイル名を付け足す。
-    }
+    
 
     bool cv_dnn::checkFileExistence(std::string& str)
     {
