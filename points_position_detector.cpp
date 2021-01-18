@@ -10,6 +10,8 @@ points_position_detector::~points_position_detector()
 {
     //スレッド残留防止
     stop_detector_thread();
+
+    rs_man.stop_sensor();
 }
 
 void points_position_detector::start_detector_thread(std::string& path)
@@ -17,11 +19,13 @@ void points_position_detector::start_detector_thread(std::string& path)
     run = true;
     //ini読み込み
     cv_dnn_instance.setConfig(path);
+    
+    rs_man.init_sensor();
+    rs_man.start_sensor();
+
     //バインドを作らなきゃならないらしい
     //インスタンスよりスレッドが長生きしないよう注意
-    detectorTheread = std::thread(std::bind(&points_position_detector::detector, this));
-
-
+    detector_theread = std::thread(std::bind(&points_position_detector::detector, this));
 }
 
 void points_position_detector::stop_detector_thread()
@@ -29,87 +33,64 @@ void points_position_detector::stop_detector_thread()
     if (run) {
         run = false;
         //スレッド終了待ち
-        detectorTheread.join();
+        detector_theread.join();
     }
     cv::destroyAllWindows();
 }
 
+/// <summary>
+/// 物体検出回すマン
+/// </summary>
 void points_position_detector::detector() 
 {
-    const rs2::context ctx;
-    pipeline = new rs2::pipeline(ctx);
-    profile = pipeline->start();
 
-    //YOLO
+    while (!rs_man.pipeline_isinit) {}
 
-    rs2::align align(RS2_STREAM_COLOR);
 
-    //realsense
-    /*dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 3);
-    spat_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 2);
-    spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.5);
-    spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20);
-    spat_filter.set_option(RS2_OPTION_HOLES_FILL, 0);
-    temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.4);
-    temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20);
-    temp_filter.set_option(RS2_OPTION_HOLES_FILL, 3);
-    hf_filter.set_option(RS2_OPTION_HOLES_FILL, 1);*/
-
-    //pcl
+    //PCL
+    //可視化
     boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("viewer"));
     viewer->setBackgroundColor(0, 0, 0);
 
-    pcl_ptr cloud_pass_filtered(new pcl::PointCloud<PointT>);
-    pcl_ptr cloud_sor_filtered(new pcl::PointCloud<PointT>);
-    pcl::PassThrough<PointT> pass;
     
-    //opencv
-
-    //rs
-    const auto intrinsics = profile.get_stream(RS2_STREAM_DEPTH).as<rs2::video_stream_profile>().get_intrinsics();
     
     //焦点距離px
-    std::cout << "fx:" << intrinsics.fx << " fy:" << intrinsics.fy << std::endl;
+    //std::cout << "fx:" << depth_intr.fx << " fy:" << depth_intr.fy << std::endl;
 
     //FOV計算（不要）
-    auto wfov = 2 * std::atan(intrinsics.width / (2 * intrinsics.fx));
-    auto hfov = 2 * std::atan(intrinsics.height / (2 * intrinsics.fy));
-    std::cout << "W_FOV: " << wfov << "  H_FOV: " << hfov << std::endl;
+    //auto wfov = 2 * std::atan(depth_intr.width / (2 * depth_intr.fx));
+    //auto hfov = 2 * std::atan(depth_intr.height / (2 * depth_intr.fy));
+    //std::cout << "W_FOV: " << wfov << "  H_FOV: " << hfov << std::endl;
 
 
+    const auto depth_intr = rs_man.depth_intr;
 
     //メインループ
     while (run)
     {   
         {
-            std::lock_guard<std::mutex> lock(imageMutex);
+            std::lock_guard<std::mutex> lock(boxes_mutex);
             boxes.clear();
         }
 
         //
         // Realsense
         //
-        auto frames = pipeline->wait_for_frames();
-
+        rs2::frameset frame = rs_man.queue.wait_for_frame();
+        rs2::video_frame aligned_color_frame = frame.first(RS2_STREAM_COLOR);
+        rs2::depth_frame aligned_depth_frame = frame.get_depth_frame();
         //位置合わせ
-        auto aligned_frames = align.process(frames);
-        rs2::video_frame aligned_color_frame = aligned_frames.first(RS2_STREAM_COLOR);
-        rs2::depth_frame aligned_depth_frame = aligned_frames.get_depth_frame();
+
+        //一致している保証はない
+        //まとめた方がよい？
+        rs_man.get_aligned_RGBimage(image);
 
         //
         // OpenCV
         //
-        rs2_frame_to_mat(aligned_color_frame, image);
-        
-        {
-            std::lock_guard<std::mutex> lock(imageMutex);
-            image_ext = image.clone();
-        }
-        
-        //imshow(window_name, image);
 
+        //可視化
 
-        //dev
         std::vector<cv::Rect> rects;
 
         // YOLO
@@ -117,14 +98,15 @@ void points_position_detector::detector()
         cv_dnn_instance.exec(image, editedImage, rects, classIds);
         //image_ext = image.clone();
 
-        imshow(window_name, editedImage);
+        //imshow(window_name, editedImage);
 
         //切り出し
         if (rects.size() > 0) {
             std::vector<pcl_ptr> clouds; 
 
+
             //yoloの結果rectsの範囲内の点群を深度画像から求める
-            points_position_detector::get_pointclouds(clouds, rects, aligned_color_frame, aligned_depth_frame, &intrinsics);
+            points_position_detector::get_pointclouds(clouds, rects, aligned_color_frame, aligned_depth_frame, &depth_intr);
 
             //
             // PCL
@@ -140,6 +122,11 @@ void points_position_detector::detector()
             for (int i = 0; i < clouds.size(); i++)
             {
 
+                //フィルタ処理した点群保存用
+                pcl_ptr cloud_down_sampled(new pcl::PointCloud<PointT>);
+                pcl_ptr cloud_pass_filtered(new pcl::PointCloud<PointT>);
+                pcl_ptr cloud_sor_filtered(new pcl::PointCloud<PointT>);
+
                 //std::cout << i << std::endl;
                 //idでフィルタ
                 //39 bottle
@@ -149,38 +136,49 @@ void points_position_detector::detector()
                 if (classIds[i] == 39 || classIds[i] == 40 || classIds[i] == 41 || classIds[i] == 64) {
                     std::cerr << "PointCloud before filtering has: " << clouds[i]->size() << " data points." << std::endl;
 
-                    // Build a passthrough filter to remove spurious NaNs
-                    //奥行方向フィルタ
-                    pass.setInputCloud(clouds[i]);
-                    //Z軸
-                    pass.setFilterFieldName("z");
-                    //10cm-1m
-                    pass.setFilterLimits(0.01, 1);
-                    pass.filter(*cloud_pass_filtered);
+                    //
+                    down_sampling(clouds[i], cloud_down_sampled, 0.01f);
+                    std::cerr << "PointCloud after down sampling has: " << cloud_down_sampled->size() << " data points." << std::endl;
+
+
+                    //パススルーフィルタ
+                    //指定範囲内のものだけ残す
+                    passthrough_filter(cloud_down_sampled, cloud_pass_filtered);
                     std::cerr << "PointCloud after passfilter has: " << cloud_pass_filtered->size() << " data points." << std::endl;
 
-                    Remove_outliers(cloud_pass_filtered, cloud_sor_filtered);
+                    
+
+                    //統計使って外れ値を消す
+                    //重い
+                    //この前に減らしておきたい
+                    remove_outliers(cloud_pass_filtered, cloud_sor_filtered);
                     std::cerr << "PointCloud after sorfilter has: " << cloud_sor_filtered->size() << " data points." << std::endl;
 
 
-                    clouds_filterd.push_back(cloud_sor_filtered);
+                    //clouds_filterd.push_back(cloud_sor_filtered);
+                    //if (cloud_sor_filtered->size() > 0)clouds_filterd.push_back(clouds[i]);
+                    if (cloud_sor_filtered->size() > 0) {
+                        //記録
+                        clouds_filterd.push_back(cloud_sor_filtered);
 
-                    // viewerに追加
-                    viewer->addPointCloud<PointT>(cloud_sor_filtered, "coloud" + i);
+                        // viewerに追加
+                        viewer->addPointCloud<PointT>(clouds_filterd.back() , "coloud" + i);
+                    };
+
                     //viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "coloud" + i);
                 }
             }
             {
-                std::lock_guard<std::mutex> lock(imageMutex);
+                std::lock_guard<std::mutex> lock(boxes_mutex);
                 boxes.clear();
 
                 for (int i = 0; i < clouds_filterd.size(); i++)
                 {
-
                     myBox box;
-                    GetBox(clouds_filterd[i], box);
+                    get_box(clouds_filterd[i], box);
                     boxes.push_back(box);
 
+                    //可視化用
                     auto min_x = box.x - (box.xLength / 2);
                     auto min_y = box.y - (box.yLength / 2);
                     auto min_z = box.z - (box.zLength / 2);
@@ -208,35 +206,22 @@ void points_position_detector::detector()
 
 void points_position_detector::get_texture(cv::Mat& out)
 {
-    {
-        std::lock_guard<std::mutex> lock(imageMutex);
-        out = image_ext.clone();
-    }
-    if (out.cols > 0) {
-        cv::flip(out, out, 0);
-        cv::cvtColor(out, out, cv::COLOR_BGR2RGBA);
+    if (rs_man.sensor_isrunning) {
+        rs_man.get_aligned_RGBimage(out);
+        if (out.cols > 0) {
+            //cv::flip(out, out, 0);
+            cv::cvtColor(out, out, cv::COLOR_RGB2RGBA);
+        }
     }
 }
 
 void points_position_detector::get_boxes(std::vector<myBox>& boxes)
 {
-    std::lock_guard<std::mutex> lock(imageMutex);
+    std::lock_guard<std::mutex> lock(boxes_mutex);
     boxes = this->boxes;
 }
 
 
-void points_position_detector::rs2_frame_to_mat(
-    rs2::frame& src, 
-    cv::Mat& dst)
-{
-    rs2::frame frame4cv = src;
-
-    const int w = frame4cv.as<rs2::video_frame>().get_width();
-    const int h = frame4cv.as<rs2::video_frame>().get_height();
-
-    dst = cv::Mat(cv::Size(w, h), CV_8UC3, (void*)frame4cv.get_data(), cv::Mat::AUTO_STEP);
-    cv::cvtColor(dst, dst, cv::COLOR_BGR2RGB);
-}
 
 void points_position_detector::save_image_and_pointclouds(
     cv::Mat& image, 
@@ -255,7 +240,8 @@ void points_position_detector::save_image_and_pointclouds(
 }
 
 /// <summary>
-/// 
+/// 画像上の座標で示した複数の矩形内に含まれる点群を
+/// 深度画像・センサの内部パラメータを用いて計算
 /// </summary>
 /// <param name="clouds">出力</param>
 /// <param name="rects">画像上の枠</param>
@@ -325,10 +311,21 @@ void points_position_detector::get_pointcloud(
         }
     }
 }
-
-void points_position_detector::Remove_outliers(pcl_ptr cloud, pcl_ptr out)
+void points_position_detector::passthrough_filter(pcl_ptr cloud, pcl_ptr out)
 {
-    pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
+    pcl::PassThrough<PointT> pass;
+    // Build a passthrough filter to remove spurious NaNs
+    //奥行方向フィルタ
+    pass.setInputCloud(cloud);
+    //Z軸
+    pass.setFilterFieldName("z");
+    //10cm-1m
+    pass.setFilterLimits(0.01, 1);
+    pass.filter(*out);
+}
+void points_position_detector::remove_outliers(pcl_ptr cloud, pcl_ptr out)
+{
+    pcl::StatisticalOutlierRemoval<PointT> sor;
     sor.setInputCloud(cloud);//外れ値を除去する点群を入力
     sor.setMeanK(50);//MeanKを設定
     sor.setStddevMulThresh(0.1);
@@ -336,7 +333,15 @@ void points_position_detector::Remove_outliers(pcl_ptr cloud, pcl_ptr out)
     sor.filter(*out);//出力  
 }
 
-void points_position_detector::GetBox(pcl_ptr cloud, myBox& box) 
+void points_position_detector::down_sampling(pcl_ptr cloud, pcl_ptr out, float leafsize)
+{
+    pcl::VoxelGrid<PointT> vg;
+    vg.setInputCloud(cloud);
+    vg.setLeafSize(leafsize, leafsize, leafsize);
+    vg.filter(*out);
+}
+
+void points_position_detector::get_box(pcl_ptr cloud, myBox& box) 
 {
     //pclのminMax3Dが何故か使えない&遅いらしいのでベタ
     float min_x = cloud->points[0].x,

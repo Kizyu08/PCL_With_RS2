@@ -40,13 +40,13 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -171,6 +171,7 @@ xcopy /y "$(ProjectDir)setting\config.ini" $(TargetDir) </Command>
     <ClInclude Include="main.h" />
     <ClInclude Include="points_position_detector.h" />
     <ClInclude Include="rabv.hpp" />
+    <ClInclude Include="realsense_manager.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="cv_dnn.hpp" />
   </ItemGroup>
@@ -185,6 +186,7 @@ xcopy /y "$(ProjectDir)setting\config.ini" $(TargetDir) </Command>
     <ClCompile Include="cv_dnn.cpp" />
     <ClCompile Include="points_position_detector.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="realsense_manager.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

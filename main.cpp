@@ -10,6 +10,7 @@ int main()
 
     //ppd.detector();
     startDetector(GetIniPath().c_str());
+
     int w = 0;
     int h = 0;
     while (w < 1) {
@@ -18,23 +19,27 @@ int main()
         h = getHeight();
         cv::waitKey(10);
     }
+
     int size = getDataSize();
     //std::cout << "datasize:" << size << std::endl;
     
 
     while (true) {
         getImage();
-        //getImageData();
+        cv::imshow("nanika", image);
+        unsigned char* imagedata_ptr = new unsigned char[size];
+        getImageData(imagedata_ptr);
+        auto imagedata = *imagedata_ptr;
 
         getBoxes();
         auto count = getBoxesCount();
         if (count > 0) {
-            /*float* data;
+            float* data;
             data = new float[count * 6];
-            getBoxesData(&data);
+            data = getBoxesData();
             std::cout << "count: " << count << std::endl;
             std::cout << "pos x: " << data[0] << "pos y: " << data[1] << "pos z: " << data[2] << std::endl;
-            delete[] data;*/
+            delete[] data;
         }
         cv::waitKey(10);
     }

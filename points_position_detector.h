@@ -23,6 +23,7 @@
 #include <opencv2/opencv.hpp>
 #include "convert_util.hpp"
 #include "cv_dnn.hpp"
+#include "realsense_manager.h"
 
 typedef pcl::PointXYZ PointT;
 using namespace convertutil;
@@ -45,33 +46,33 @@ public:
 class points_position_detector
 {
 private:
-
+    //YOLO用
     cv_dnn cv_dnn_instance;
 
-    rs2::pipeline* pipeline;
+    //Realsense
+    realsense_manager rs_man;
 
-    rs2::points points;
-    rs2::pointcloud pointcloud;
-    rs2::colorizer color_map;
 
-    rs2::pipeline_profile profile;
+    std::mutex boxes_mutex;
 
-    std::mutex imageMutex;
-    //std::mutex boxesMutex;
-
+    bool pipeline_isinit = false;
     bool imageAllived = false;
+
+    //画像
     cv::Mat image;
     cv::Mat image_ext;//公開用
     cv::Mat editedImage;
 
     std::vector<myBox> boxes;
 
+    //スレッド
     bool run = false;
-    std::thread detectorTheread;
+    std::thread detector_theread;
+    std::thread frame_updater_thread;
 
     const std::string window_name = "Display Image";
 
-    void rs2_frame_to_mat(rs2::frame& src, cv::Mat& dst);
+
     void save_image_and_pointclouds(cv::Mat& image, std::vector<pcl_ptr>& clouds);
     void get_pointclouds(
         std::vector<pcl_ptr>& cloud,
@@ -81,8 +82,10 @@ private:
         const rs2_intrinsics* intrinsics
     );
     void get_pointcloud(pcl_ptr, cv::Rect&, rs2::video_frame&, rs2::depth_frame&, const rs2_intrinsics*);
-    void Remove_outliers(pcl_ptr cloud, pcl_ptr out);
-    void GetBox(pcl_ptr cloud, myBox& box);
+    void passthrough_filter(pcl_ptr cloud, pcl_ptr out);
+    void remove_outliers(pcl_ptr cloud, pcl_ptr out);
+    void down_sampling(pcl_ptr cloud, pcl_ptr out, float leafsize);
+    void get_box(pcl_ptr cloud, myBox& box);
 
 public:
     points_position_detector();
