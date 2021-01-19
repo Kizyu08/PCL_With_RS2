@@ -5,6 +5,7 @@ realsense_manager::realsense_manager()
 }
 realsense_manager::~realsense_manager()
 {
+    if (sensor_isrunning)stop_sensor();
 }
 
 bool realsense_manager::init_sensor()

@@ -36,6 +36,8 @@ void points_position_detector::stop_detector_thread()
         detector_theread.join();
     }
     cv::destroyAllWindows();
+
+    rs_man.stop_sensor();
 }
 
 /// <summary>
@@ -210,7 +212,8 @@ void points_position_detector::get_texture(cv::Mat& out)
         rs_man.get_aligned_RGBimage(out);
         if (out.cols > 0) {
             //cv::flip(out, out, 0);
-            cv::cvtColor(out, out, cv::COLOR_RGB2RGBA);
+            //Unity—p
+            cv::cvtColor(out, out, cv::COLOR_RGB2BGRA);
         }
     }
 }
