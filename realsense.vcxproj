@@ -46,7 +46,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -59,29 +59,29 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\..\..\..\..\..\Program Files (x86)\Intel RealSense SDK 2.0\intel.realsense.props" />
-    <Import Project="..\..\..\..\..\..\Program Files (x86)\Intel RealSense SDK 2.0\glfw-imgui.props" />
-    <Import Project="..\..\..\..\..\..\lib\glfw-3.3.2.bin.WIN64\lib-vc2019\glfw.props" />
+    <Import Project="c:\Program Files (x86)\Intel RealSense SDK 2.0\intel.realsense.props" />
+    <Import Project="c:\Program Files (x86)\Intel RealSense SDK 2.0\glfw-imgui.props" />
+    <Import Project="c:\lib\glfw-3.3.2.bin.WIN64\lib-vc2019\glfw.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\..\..\..\..\..\Program Files (x86)\Intel RealSense SDK 2.0\intel.realsense.props" />
-    <Import Project="..\..\..\..\..\..\Program Files (x86)\Intel RealSense SDK 2.0\glfw-imgui.props" />
-    <Import Project="..\..\..\..\..\..\lib\glfw-3.3.2.bin.WIN64\lib-vc2019\glfw.props" />
+    <Import Project="c:\Program Files (x86)\Intel RealSense SDK 2.0\intel.realsense.props" />
+    <Import Project="c:\Program Files (x86)\Intel RealSense SDK 2.0\glfw-imgui.props" />
+    <Import Project="c:\lib\glfw-3.3.2.bin.WIN64\lib-vc2019\glfw.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\..\..\..\..\..\Program Files (x86)\Intel RealSense SDK 2.0\intel.realsense.props" />
-    <Import Project="..\..\..\..\..\..\Program Files (x86)\Intel RealSense SDK 2.0\glfw-imgui.props" />
-    <Import Project="..\..\..\..\..\..\lib\glfw-3.3.2.bin.WIN64\lib-vc2019\glfw.props" />
+    <Import Project="c:\Program Files (x86)\Intel RealSense SDK 2.0\intel.realsense.props" />
+    <Import Project="c:\Program Files (x86)\Intel RealSense SDK 2.0\glfw-imgui.props" />
+    <Import Project="c:\lib\glfw-3.3.2.bin.WIN64\lib-vc2019\glfw.props" />
     <Import Project="pcl1.11.1_d.props" />
     <Import Project="opencv450.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\..\..\..\..\..\Program Files (x86)\Intel RealSense SDK 2.0\intel.realsense.props" />
-    <Import Project="..\..\..\..\..\..\Program Files (x86)\Intel RealSense SDK 2.0\glfw-imgui.props" />
-    <Import Project="..\..\..\..\..\..\lib\glfw-3.3.2.bin.WIN64\lib-vc2019\glfw.props" />
+    <Import Project="c:\Program Files (x86)\Intel RealSense SDK 2.0\intel.realsense.props" />
+    <Import Project="c:\Program Files (x86)\Intel RealSense SDK 2.0\glfw-imgui.props" />
+    <Import Project="c:\lib\glfw-3.3.2.bin.WIN64\lib-vc2019\glfw.props" />
     <Import Project="pcl1.11.1.props" />
     <Import Project="opencv450r.props" />
   </ImportGroup>
