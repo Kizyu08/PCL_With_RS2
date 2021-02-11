@@ -195,7 +195,7 @@ void points_position_detector::detector()
             if (clouds_filterd.size() > 0) {
                 if (GetAsyncKeyState(VK_SPACE) & 1) {
                     // スペースが押されている時の処理
-                    save_image_and_pointclouds(image, clouds_filterd);
+                    save_image_and_pointclouds(image, editedImage, clouds_filterd);
                 }
 
                 viewer->addCoordinateSystem();
@@ -228,6 +228,7 @@ void points_position_detector::get_boxes(std::vector<myBox>& boxes)
 
 void points_position_detector::save_image_and_pointclouds(
     cv::Mat& image, 
+    cv::Mat& detected_image,
     std::vector<pcl_ptr>& clouds)
 {
     // 作成したPointCloudをPCD形式で保存する
@@ -240,6 +241,7 @@ void points_position_detector::save_image_and_pointclouds(
 
     // 画像保存
     cv::imwrite("image.png", image);
+    cv::imwrite("detected_image.png", detected_image);
 }
 
 /// <summary>

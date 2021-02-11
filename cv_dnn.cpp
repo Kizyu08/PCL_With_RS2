@@ -94,7 +94,7 @@ namespace libstest {
         std::string label = format("Inference time: %.2f ms", t);
         putText(frame, label, Point(0, 15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));*/
 
-        //imshow(kWinName, frame);
+        imshow("result", out);
     }
 
     void cv_dnn::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs, cv::dnn::Net& net, std::vector<cv::Rect>& boxes, std::vector<int>& classIds)

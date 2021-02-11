@@ -33,6 +33,9 @@ extern "C"
 	UNITYEXPORT void UNITYCALLCONV getBoxes();
 	UNITYEXPORT int UNITYCALLCONV getBoxesCount();
 	UNITYEXPORT float* UNITYCALLCONV getBoxesData();
+
+	//dll
+	//UNITYEXPORT void UNITYCALLCONV initThis();
 }
 
 std::string GetIniPath();

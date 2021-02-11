@@ -73,7 +73,7 @@ private:
     const std::string window_name = "Display Image";
 
 
-    void save_image_and_pointclouds(cv::Mat& image, std::vector<pcl_ptr>& clouds);
+    void save_image_and_pointclouds(cv::Mat& image, cv::Mat& detected_image, std::vector<pcl_ptr>& clouds);
     void get_pointclouds(
         std::vector<pcl_ptr>& cloud,
         std::vector<cv::Rect>& rects,

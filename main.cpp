@@ -60,6 +60,7 @@ UNITYEXPORT void UNITYCALLCONV stopDetector()
 UNITYEXPORT void UNITYCALLCONV getImage()
 {
     ppd.get_texture(image);
+    //cv::imshow("image", image);
 }
 
 UNITYEXPORT int UNITYCALLCONV getWidth()
